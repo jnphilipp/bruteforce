@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Bruteforce LUKS encrypted devices.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
+import math
+import string
+
+from argparse import ArgumentParser, RawTextHelpFormatter
+from subprocess import Popen, PIPE
+
+
+def ceil(text):
+    return ' ' * math.ceil((41 - len(text)) / 2)
+
+
+def floor(text):
+    return ' ' * math.floor((41 - len(text)) / 2)
+
+
+__author__ = 'jnphilipp'
+__email__ = 'nathanael@philipp.land'
+__license__ = 'GPLv3'
+__version__ = '0.1.0'
+__github__ = 'https://github.com/jnphilipp/bruteforce'
+__app__ = (('###########################################\n' +
+            '#                bruteforce               #\n' +
+            '#          bruteforce LUKS devices        #\n' +
+            '#                                         #\n' +
+            f'#{floor(__version__)}{__version__}{ceil(__version__)}#\n' +
+            f'#{floor(__license__)}{__license__}{ceil(__license__)}#\n' +
+            '#                                         #\n' +
+            f'#{floor(__author__)}{__author__}{ceil(__author__)}#\n' +
+            f'#{floor(__email__)}{__email__}{ceil(__email__)}#\n' +
+            '#                                         #\n' +
+            f'#{floor(__github__)}{__github__}{ceil(__github__)}#\n' +
+            '###########################################'))
+current_time_millis = lambda: int(round(time.time() * 1000))
+
+
+def password_generator(start_length=1):
+    def next_pwd(i=0):
+        if len(pwd) == i:
+            pwd.append(-1)
+
+        pwd[i] += 1
+        if pwd[i] == len(vocab):
+            pwd[i] = 0
+            next_pwd(i + 1)
+
+    vocab = list(string.ascii_letters + string.digits + string.punctuation)
+    pwd = [0] * start_length
+    pwd[0] = -1
+    while True:
+        next_pwd()
+        password = ''
+        for i in range(len(pwd)):
+            password += vocab[pwd[i]]
+        yield password
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser(prog='bruteforce',
+                            formatter_class=RawTextHelpFormatter)
+    parser.add_argument('-v', '--version', action='version', version=__app__)
+    parser.add_argument('DEVICE', help='Device to bruteforce.')
+    parser.add_argument('TARGET', help='TARGET path.')
+    args = parser.parse_args()
+
+    cmd = f'sudo cryptsetup luksOpen {args.DEVICE} {args.TARGET}'
+    start_time = current_time_millis()
+    for i, pwd in enumerate(password_generator(20)):
+        print(i, pwd, 'runtime:', current_time_millis() - start_time)
+        p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True)
+
+        out, err = p.communicate(input=pwd.encode('utf-8'))
+        print(err.decode('utf-8').strip())
+        if p.returncode == 0:
+            print('Success!')
+            print('Total tries:', i)
+            print('Password:', pwd)
+            print('Total runtime:', current_time_millis() - start_time)
+            break
+        print('-' * 100)
