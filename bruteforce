@@ -84,11 +84,14 @@ if __name__ == '__main__':
     cmd = f'sudo cryptsetup luksOpen {args.DEVICE} {args.TARGET}'
     start_time = current_time_millis()
     for i, pwd in enumerate(password_generator(20)):
-        print(i, pwd, 'runtime:', current_time_millis() - start_time)
+        lt = current_time_millis()
+        print(i, pwd)
         p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True)
 
         out, err = p.communicate(input=pwd.encode('utf-8'))
         print(err.decode('utf-8').strip())
+        t = current_time_millis()
+        print(t - lt, 'ms', '/', t - start_time, 'ms')
         if p.returncode == 0:
             print('Success!')
             print('Total tries:', i)
