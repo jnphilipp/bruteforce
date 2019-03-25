@@ -52,7 +52,9 @@ __app__ = (('###########################################\n' +
 current_time_millis = lambda: int(round(time.time() * 1000))
 
 
-def password_generator(start_length=1):
+def password_generator(start_length=1, initial_password=None):
+    assert start_length >= 1
+
     def next_pwd(i=0):
         if len(pwd) == i:
             pwd.append(-1)
@@ -63,8 +65,15 @@ def password_generator(start_length=1):
             next_pwd(i + 1)
 
     vocab = list(string.ascii_letters + string.digits + string.punctuation)
-    pwd = [0] * start_length
-    pwd[0] = -1
+    if initial_password is None:
+        pwd = [0] * start_length
+        pwd[0] = -1
+    else:
+        pwd = []
+        for s in initial_password:
+            pwd.append(vocab.index(s))
+        pwd[0] -= 1
+
     while True:
         next_pwd()
         password = ''
@@ -79,11 +88,16 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--version', action='version', version=__app__)
     parser.add_argument('DEVICE', help='Device to bruteforce.')
     parser.add_argument('TARGET', help='TARGET path.')
+    parser.add_argument('-l', '--length', default=1, type=int,
+                        help='Password starting length')
+    parser.add_argument('-i', '--initial-password', default=None,
+                        help='Initial password')
     args = parser.parse_args()
 
     cmd = f'sudo cryptsetup luksOpen {args.DEVICE} {args.TARGET}'
     start_time = current_time_millis()
-    for i, pwd in enumerate(password_generator(20)):
+    for i, pwd in enumerate(password_generator(args.length,
+                                               args.initial_password)):
         lt = current_time_millis()
         print(i, pwd)
         p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True)
@@ -91,11 +105,11 @@ if __name__ == '__main__':
         out, err = p.communicate(input=pwd.encode('utf-8'))
         print(err.decode('utf-8').strip())
         t = current_time_millis()
-        print(t - lt, 'ms', '/', t - start_time, 'ms')
+        print(t - lt, 'ms', '/', (t - start_time) / 3600000, 'h')
         if p.returncode == 0:
             print('Success!')
             print('Total tries:', i)
             print('Password:', pwd)
-            print('Total runtime:', current_time_millis() - start_time)
+            print('Total runtime:', (t - start_time) / 3600000, 'h')
             break
         print('-' * 100)
