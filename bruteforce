@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
 import string
+import time
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 from subprocess import Popen, PIPE
